@@ -1,0 +1,12 @@
+{
+    "title": "string - required",
+    "startdate": "date - required, first time the reminder is sent",
+    "id": "num - required",
+    "frequency": {
+        "type": "string",
+        "required": "true",
+        "enum": "daily, weekly, bi-weekly, monthly, yearly"
+    },
+    "textstring": "string, not required",
+    "link": "string, not required"
+}
