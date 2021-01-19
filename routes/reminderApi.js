@@ -47,7 +47,8 @@ router.post('/new', [
   body('text').notEmpty().trim().escape(),
   body('start_date').notEmpty().trim().escape(),
   body('freq').notEmpty(),
-  body('user').notEmpty()
+  body('user').notEmpty(),
+  body('type').isIn(['Text', 'Email', 'Both'])
 ], async (req, res, next) => {
 
   const errors = validationResult(req);
@@ -64,7 +65,8 @@ router.post('/new', [
     start_date: req.body.start_date,
     freq: req.body.freq,
     time_zone: time_zone,
-    text: req.body.text
+    text: req.body.text,
+    type: req.body.type
   }
 
   const message = await DBHandler.createNewReminder(newReminder)
@@ -81,7 +83,8 @@ router.post('/update/:reminderId', [
   body('title').notEmpty().trim().escape(),
   body('text').notEmpty().trim().escape(),
   body('start_date').notEmpty().trim().escape(),
-  body('freq').notEmpty()
+  body('freq').notEmpty(),
+  body('type').isIn(['Text', 'Email', 'Both'])
 ], async (req, res, next) => {
 
   const errors = validationResult(req);
@@ -98,7 +101,8 @@ router.post('/update/:reminderId', [
     'start_date': req.body.start_date,
     'freq': req.body.freq,
     'text': req.body.text,
-    'time_zone': time_zone
+    'time_zone': time_zone,
+    'type': req.body.type
   }
 
   Scheduler.stopScheduler(remId)

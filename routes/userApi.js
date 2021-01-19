@@ -60,10 +60,10 @@ router.post('/login', [
     }
     const message = await DBHandler.loginUser(userObj)
     
-    if(message.type === 'VALID') {
+    if(message.type === 'SUCCESS') {
         res.status(200).send(message)
     } else {
-        res.status(400).send(message.message)
+        res.status(202).send(message)
     }
   
 })
@@ -72,7 +72,7 @@ router.post('/new', [
     body('username').isLength({ min: 2, max: 30 }).trim().escape(),
     body('email').isEmail().normalizeEmail(),
     body('password').notEmpty().isLength({ min: 6, max: 20}),
-    body('phone_number').exists().isMobilePhone(),
+    body('phone_number').exists().trim().isMobilePhone(),
     body('time_zone').notEmpty()
   ], async (req, res, next) => {
   
@@ -94,19 +94,21 @@ router.post('/new', [
     const message = await DBHandler.createUser(userObj)
 
     if(message.type === 'VALID') {
-        res.status(200).send(message.message)
+        res.status(200).send(message)
     } else {
-        res.status(400).send(message.message)
+        res.status(202).send(message)
     }
   
   })
 
 
 router.post('/delete', [
-    body('userID').notEmpty(),
+    body('user').notEmpty(),
     body('password').notEmpty()
 ],
 async (req, res, next) => {
+
+    console.log(`Delete request ${req.body.user} // ${req.body.password}`)
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -115,17 +117,17 @@ async (req, res, next) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const delRes = await DBHandler.deleteUser(req.body.userID, req.body.password)
+    const delRes = await DBHandler.deleteUser(req.body.user, req.body.password)
     if(delRes.success===true) {
         res.status(200).send(delRes)
     } else {
-        res.status(400).send(delRes)
+        res.status(202).send(delRes)
     }
 
 })
 
 router.post('/update', [
-    body('field').isIn(['time_zone', 'phone_number', 'email', 'time_zone', 'password']),
+    body('field').isIn(['time_zone', 'phone_number', 'email', 'time_zone', 'password', 'username']),
     body('value').notEmpty(),
     body('user').notEmpty()
 ], async (req, res, next) => {
@@ -144,15 +146,16 @@ router.post('/update', [
     if(field === 'password') {
         let password = req.body.value
         let oldPass = req.body.password
+
         if(password.length >= 6 && password.length <= 20) {
             let ret = await DBHandler.updateUserPassword(password, oldPass, user)
             if(ret.type === 'SUCCESS') {
                 res.status(200).send(ret)
             } else {
-                res.status(400).send(ret)
+                res.status(202).send(ret)
             }
         } else {
-            res.status(400).json({
+            res.status(202).json({
                 type: "INVALID",
                 message: "Password must be between 6 and 20 characters."
             })
@@ -162,207 +165,10 @@ router.post('/update', [
         if(ret.type === 'SUCCESS') {
             res.status(200).send(ret)
         } else {
-            res.status(400).send(ret)
+            res.status(202).send(ret)
         }
     }
 
 })
-
-// router.post('/update/phone_number', [
-
-// ], async (req, res, next) => {
-
-//     const errors = validationResult(req);
-//     if (!errors.isEmpty()) {
-//       console.log(`Errors:`)
-//       console.log(errors.array())
-
-//       // if the phone number is not a valid phone number, return invalid 
-//       if(errors.array().some((e) => {
-//         if(e.param === 'phone_number') {
-//             return true
-//         }
-//       })) {
-//         return res.status(200).send({
-//             type: "INVALID",
-//             message: "Must be a real phone number."
-//         })
-//       } else if (errors.array().some((e) => {
-//           if(e.param === 'user') {
-//               return true
-//           }
-//       })) {
-//           return res.status(200).send({
-//               type: "INVALID",
-//               message: "User information is invalid, please logout and try again."
-//           })
-//       } else {
-//           return res.status(400).json(errors.array())
-//       }
-//     }
-
-//     let value = req.body.value;
-//     let user = req.body.user;
-
-//     // check if phone number is in use already 
-//     let validRes = await DBHandler.checkForExistingPhoneNumber(value, user)
-//     if(validRes.type === 'VALID') {
-//         let result = await DBHandler.updateUserInfo('phone_number', value, user)
-//         if(result.type === 'SUCCESS') {
-//             res.status(200).send(result)
-//         } else {
-//             res.status(200).send(result)
-//         }
-//     } else {
-//         res.status(200).send(validRes)
-//     }
-
-
-// })
-
-// router.post('/update/time_zone', [
-//     body('field').isIn(['time_zone']),
-//     body('value').notEmpty(),
-//     body('user').notEmpty()
-// ], async (req, res, next) => {
-//     const errors = validationResult(req);
-//     if (!errors.isEmpty()) {
-//       console.log(`Errors:`)
-//       console.log(errors.array())
-
-//       if(errors.array().some((e) => {
-//         if(e.param === 'time_zone') {
-//             return true
-//         }
-//       })) {
-//         return res.status(200).send({
-//             type: "INVALID",
-//             message: "Must be a valid time zone."
-//         })
-//       } else if (errors.array().some((e) => {
-//           if(e.param === 'user') {
-//               return true
-//           }
-//       })) {
-//           return res.status(200).send({
-//               type: "INVALID",
-//               message: "User information is invalid, please logout and try again."
-//           })
-//       } else {
-//           return res.status(400).json(errors.array())
-//       }
-//     }
-
-//     let value = req.body.value;
-//     let user = req.body.user;
-
-//     let result = await DBHandler.updateUserInfo('time_zone', value, user)
-//     if(result.type === 'SUCCESS') {
-//         res.status(200).send(result)
-//     } else {
-//         res.status(200).send(result)
-//     }
-// })
-
-// router.post('/update/email', [
-//     body('field').isIn(['email']),
-//     body('value').isEmail().normalizeEmail(),
-//     body('user').notEmpty()
-// ], async (req, res, next) => {
-
-//     const errors = validationResult(req);
-//     if (!errors.isEmpty()) {
-//       console.log(`Errors:`)
-//       console.log(errors.array())
-
-//       if(errors.array().some((e) => {
-//         if(e.param === 'email') {
-//             return true
-//         }
-//       })) {
-//         return res.status(200).send({
-//             type: "INVALID",
-//             message: "Must be a valid email."
-//         })
-//       } else if (errors.array().some((e) => {
-//           if(e.param === 'user') {
-//               return true
-//           }
-//       })) {
-//           return res.status(200).send({
-//               type: "INVALID",
-//               message: "User information is invalid, please logout and try again."
-//           })
-//       } else {
-//           return res.status(400).json(errors.array())
-//       }
-//     }
-//     let field = req.body.field;
-//     let value = req.body.value;
-//     let user = req.body.user;
-
-//     let validRes = await DBHandler.checkForExistingEmail(value, user)
-//     if(validRes.type === 'VALID') {
-//         let result = await DBHandler.updateUserInfo('email', value, user)
-//         if(result.type === 'SUCCESS') {
-//             res.status(200).send(result)
-//         } else {
-//             res.status(200).send(result)
-//         }
-//     } else {
-//         res.status(200).send(validRes)
-//     }
-
-// })
-
-// router.post('/update/username', [
-//     body('field').isIn(['username']),
-//     body('value').isLength({ min: 2, max: 30 }).trim().escape(),
-//     body('user').notEmpty()
-// ], async (req, res, next) => {
-
-//     const errors = validationResult(req);
-//     if (!errors.isEmpty()) {
-//       console.log(`Errors:`)
-//       console.log(errors.array())
-
-//       if(errors.array().some((e) => {
-//         if(e.param === 'phone_number') {
-//             return true
-//         }
-//       })) {
-//         return res.status(200).send({
-//             type: "INVALID",
-//             message: "Name must be between 2 and 30 characters."
-//         })
-//       } else if (errors.array().some((e) => {
-//           if(e.param === 'user') {
-//               return true
-//           }
-//       })) {
-//           return res.status(200).send({
-//               type: "INVALID",
-//               message: "User information is invalid, please logout and try again."
-//           })
-//       } else {
-//           return res.status(400).json(errors.array())
-//       }
-//     }
-
-//     let field = req.body.field;
-//     let value = req.body.value;
-//     let user = req.body.user;
-
-
-//     let result = await DBHandler.updateUserInfo('username', value, user)
-//     if(result.type === 'SUCCESS') {
-//         res.status(200).send(result)
-//     } else {
-//         res.status(200).send(result)
-//     }
-
-// })
-
-
 
 module.exports = router;

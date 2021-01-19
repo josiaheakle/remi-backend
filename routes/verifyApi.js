@@ -4,6 +4,7 @@ let VonageHandler = require('../handlers/VonageHandler.js')
 const EmailHandler = require('../handlers/EmailHandler.js')
 const { check, validationResult } = require('express-validator');
 const DBHandler = require('../handlers/DBHandler.js');
+const EmailVerificationModel = require('../models/VerificationModel.js');
 
 /*
     /verify
@@ -68,7 +69,8 @@ router.get('/info/:userId', async (req, res, next) => {
 router.post('/code', [
     check('userId').notEmpty(),
     check('id').notEmpty(),
-    check('code').isLength({min: 4, max: 4})
+    check('code').isLength({min: 4, max: 4}),
+    check('verificationType').isIn(['text', 'email'])
 ], async (req, res, next) => {
 
     const errors = validationResult(req);
@@ -83,18 +85,44 @@ router.post('/code', [
     const userId = req.body.userId
     const verificationType = req.body.verificationType
 
-    await VonageHandler.checkVerificationCode(code, id, async (result) => {
-        if(result.type === 'SUCCESS') {
-            console.log(`res: `, result)
-            if(result.statusCode === '0' || result.statusCode === '6') {
-                await DBHandler.setUserVerified('phone_number', userId)
-                res.status(200).send('Phone Number successfully verified')
+    if(verificationType === 'text') {
+        await VonageHandler.checkVerificationCode(code, id, async (result) => {
+            if(result.type === 'SUCCESS') {
+                if(result.statusCode === '0') {
+                    await DBHandler.setUserVerified('phone_number', userId)
+                    res.status(200).send({
+                        type: "SUCCESS",
+                        message: 'Phone Number successfully verified'
+                    })
+                } else {
+                    res.status(200).send({
+                        type: "INVALID",
+                        message: 'Invalid verification code'
+                    })
+                }
+            } else {
+                res.status(202).send({
+                    type: "ERROR",
+                    message: "Unable to verify phone number."
+                })
+                console.log(result)
             }
+        })
+    } else {
+        let response = await EmailHandler.checkVerificationCode(code, userId)
+        if(response.type === 'SUCCESS') {
+            DBHandler.setUserVerified('email', userId)
+            res.status(200).send({
+                type: "SUCCESS",
+                message: 'Email successfully verified.'
+            })
         } else {
-            res.status(400).send(result.message)
-            console.log(result)
+            res.status(202).send({
+                type: "ERROR",
+                message: 'Email failed to verify.'
+            })
         }
-    })
+    }
 
 })
 

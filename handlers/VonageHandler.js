@@ -44,19 +44,30 @@ const VonageHandler = (() => {
         // callback called when request is finished 
         //      params - return object {type, message, error/id}
 
+        console.log(`trying this number ${number}`)
+
         await vonage.verify.request({
             number: number,
             brand: 'Vonage',
             code_length: '4'
         }, (err, result) => {
             console.log(`(VONAGE HANDLER sendVerificationCode)`)
+
+            if(err) {
+                console.log(`ERROR TEXT VERIFICATION`)
+            } else {
+                console.log(`RESULT TEXT VERIFICATION`)
+            }
+
             console.log(err ? err : result)
 
-            if (err) {
+        
+
+            if (err || result.status !== '0') {
                 callback({
                     type: "ERROR",
                     message: "Error sending verification code",
-                    error: err
+                    error: err || result.error_text
                 })
             } else {
 

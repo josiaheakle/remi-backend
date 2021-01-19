@@ -151,14 +151,18 @@ const DBHandler = (() => {
 
     const updateUserPassword = async (newPass, oldPass, userID) => {
 
-        let user = UserLoginModel.findById(userID)
+        let user = await findUserById(userID)
+
         if(!user) {
             return {
                 type: "INVALID",
                 message: "User is invalid"
             }
         } else {
-            if((await bcrypt.compare(oldPass, user.password))) {
+
+            let isPassValid = await bcrypt.compare(oldPass, user.password)
+            
+            if(isPassValid) {
                 const cryptPass = await bcrypt.hash(newPass, 10);
                 user.password = cryptPass
                 let res = await user.save();
@@ -192,30 +196,28 @@ const DBHandler = (() => {
             // returns 3 if phonenumber is in use
             // returns -1 if error
 
-        let usernameExists = await UserLoginModel.exists({username: username});
+        // let usernameExists = await UserLoginModel.exists({username: username});
         let emailExists = await UserLoginModel.exists({email: email});
         let phoneNumExists = await UserLoginModel.exists({phone_number: phone_number})
 
-        if(!usernameExists && !emailExists && !phoneNumExists) {
+        if(!emailExists && !phoneNumExists) {
             return 0;
-        } else if ((usernameExists && !emailExists) || (usernameExists && emailExists)) {
-            return 1;
-        } else if (!usernameExists && emailExists) {
+        } else if (emailExists) {
             return 2;
-        } else if (!usernameExists && !emailExists && phoneNumExists) {
+        } else if (phoneNumExists) {
             return 3;
         } else return -1;
 
     }
 
-    const _userSwitchCode = async (code, newUser) => {
+    const _userSwitchCode = async (code, newUser, fixedNumber) => {
         switch (code) {
             case (0): 
                 const cryptPass = await bcrypt.hash(newUser.password, 10);
                 const user = await new UserLoginModel({
                     username: newUser.username,
                     email: newUser.email,
-                    phone_number: newUser.phone_number,
+                    phone_number: fixedNumber,
                     password: cryptPass,
                     time_zone: newUser.time_zone,
                     phone_number_verified: false,
@@ -266,13 +268,26 @@ const DBHandler = (() => {
         //      types - ERROR, INVALID, VALID
 
         try {
-            const code = await _checkForExistingUser(newUser.username, newUser.email, newUser.phone_number)
-            const message = await _userSwitchCode(code, newUser)
+
+            let fixedPhoneNum = '';
+            if(newUser.phone_number.length !== 11 || newUser.phone_number[0] != '1' || newUser.phone_number.includes(' ')) {
+                let strs = newUser.phone_number.split(' ');
+                strs.forEach(s => {
+                    fixedPhoneNum = `${fixedPhoneNum}${s}`
+                })
+                fixedPhoneNum = `1${fixedPhoneNum}`
+            } else {
+                fixedPhoneNum = newUser.phone_number
+            }
+
+            const code = await _checkForExistingUser(newUser.username, newUser.email, fixedPhoneNum)
+            const message = await _userSwitchCode(code, newUser, fixedPhoneNum)
             return message;
         } catch (err) {
+            console.error(err)
             return {
                 type: 'ERROR',
-                message: 'ERROR checking for existing user'
+                message: 'Trouble creating a new user, please try again.'
             }
         }
 
@@ -298,8 +313,8 @@ const DBHandler = (() => {
         } else if ((await bcrypt.compare(existingUser.password, user.password))) {
             _currentUser = user;
             return {
-                type: 'VALID',
-                message: 'User found',
+                type: 'SUCCESS',
+                message: 'User successfully logged in.',
                 user: user,
             }
         } else {
@@ -320,7 +335,8 @@ const DBHandler = (() => {
         */
         
         const user = await findUserById(id)
-        if(!(await bcrypt.compare(password, user.password))) {
+        const isPassValid = await bcrypt.compare(password, user.password)
+        if(!isPassValid) {
             return {
                 type: 'INVALID',
                 message: 'Invalid password.',
@@ -334,7 +350,7 @@ const DBHandler = (() => {
                 _deleteAllUserReminders(id)
                 return {
                     type: "SUCCESS",
-                    message: "Successfully removed from database.",
+                    message: "Successfully deleted user.",
                     success: true
                 }
             } else {
@@ -431,7 +447,8 @@ const DBHandler = (() => {
             'freq': reminderObj.freq,
             'text': reminderObj.text,
             'time_zone': reminderObj.time_zone,
-            'user': reminderObj.user
+            'user': reminderObj.user,
+            'type': reminderObj.type
         }).save()
         if(reminder) { 
             return {
@@ -464,18 +481,9 @@ const DBHandler = (() => {
                 'next_date': reminder.start_date,
                 'freq': reminder.freq,
                 'text': reminder.text,
-                'time_zone': reminder.time_zone
+                'time_zone': reminder.time_zone,
+                'type': reminder.type
             })
-
-            // const res = await ReminderModel.updateOne(
-            //     {_id: reminderId},
-            //     {'title': reminder.title,
-            //     'start_date': reminder.start_date,
-            //     'next_date': reminder.start_date,
-            //     'freq': reminder.freq,
-            //     'text': reminder.text,
-            //     'time_zone': reminder.time_zone}
-            // )
 
             console.log(`update reminder res`)
             console.log(res)

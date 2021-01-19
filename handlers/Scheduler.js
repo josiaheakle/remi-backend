@@ -3,6 +3,7 @@ let moment = require('moment-timezone');
 
 const VonageHandler = require('./VonageHandler');
 const DBHandler = require('./DBHandler.js');
+const EmailHandler = require('./EmailHandler');
 
 
 const Scheduler = (() => {
@@ -93,20 +94,20 @@ const Scheduler = (() => {
 
         let newReminder = reminder
         newReminder.next_date = reminderDate
-
-        
         newReminder = await _getValidNextDate(newReminder)
-        console.log(`newReminder with nextdate`)
-        console.log(newReminder)
         let updatedRes = await DBHandler.updateReminderNextDate(reminder._id, newReminder)
-
-        console.log(`next date updated`)
-        console.log(updatedRes)
-
         let scheduleTime = moment(newReminder.next_date).toDate()
 
+        console.log(`reminder being scheduled`)
+        console.log(newReminder)
+
         let job = schedule.scheduleJob(scheduleTime, () => {
-            VonageHandler.sendReminder(newReminder)
+            if(reminder.type === 'Text' || newReminder.type === 'Both') {
+                VonageHandler.sendReminder(newReminder)
+            }
+            if(reminder.type === 'Email' || newReminder.type === 'Both') {
+                EmailHandler.sendReminder(newReminder)
+            }
             setTimeout(() => {
                 scheduleReminder(newReminder)
             }, 1000)

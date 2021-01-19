@@ -33,6 +33,11 @@ const reminderSchema = new Schema({
         ref: 'UserLogin',
         required: true
     },
+    'type': {
+        type: String,
+        enum: ["Text", "Email", "Both"],
+        required: true
+    }
 })
 
 const ReminderModel = mongoose.model ('Reminder', reminderSchema);
