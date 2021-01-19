@@ -93,7 +93,7 @@ const VonageHandler = (() => {
 
         const user = await UserLoginModel.findById(reminder.user);
         const phoneNum = user.phone_number
-        const message = `Hello, this is Remi! \n${reminder.title} : ${reminder.text}`;
+        const message = `${reminder.title}\n${reminder.text}\nremiassistant.com`;
 
         console.log(phoneNum)
 
@@ -104,6 +104,7 @@ const VonageHandler = (() => {
     }
 
     const sendMessage = (phoneNum, message, callback) => {
+        console.log(`sending message now to ${phoneNum} saying ${message}`)
         vonage.message.sendSms(fromNum, phoneNum, message, (err, res) => {
             if (err) {
                 callback(err)
