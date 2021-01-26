@@ -28,10 +28,6 @@ app.listen(port, () => {
   console.log(`listening on http://localhost:${port}`)
 })
 
-app.use('/test', (req, res) => {
-  res.send(`hello`)
-})
-
 app.use('/user', userRoute)
 app.use('/verify', verifyRoute)
 app.use('/reminder', reminderRoute)
